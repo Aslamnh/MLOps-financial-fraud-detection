@@ -27,10 +27,17 @@ Project MLOps yang akan menganalisis dan mendeteksi transaksi keuangan yang menc
 ```
 
 ## Cara Menjalankan di GitHub Codespaces
-1. Buka halaman utama repo ini di GitHub
-2. Klik tombol hijau "<> Code"
-3. Pilih tab "Codespaces" lalu klik "Create codespace on main"
-4. Melakukan konfigurasi Environment Variables dengan menambahkan file .env ke projek
-5. Buka file .env dan masukkan CoinGecko API Key (COINGECKO_API_KEY=kunci_api)
-6. Install dependencies dengan menjalankan "pip install -r requirements.txt"
-7. Setup selesai, jalankan "python src/ingest.py" untuk mencoba proses penarikan data
+1. Buka halaman utama repo ini di GitHub.
+2. Klik tombol hijau "<> Code".
+3. Pilih tab "Codespaces" lalu klik "Create codespace on main".
+4. Melakukan konfigurasi Environment Variables dengan menambahkan file .env ke projek.
+5. Buka file .env dan masukkan CoinGecko API Key (COINGECKO_API_KEY=kunci_api).
+6. Install dependencies dengan menjalankan `pip install -r requirements.txt`.
+7. Setup selesai, jalankan "python src/ingest.py" untuk mencoba proses penarikan data.
+
+## Cara Melakukan Data Ingestion dan Data Preprocessing
+1. Pastikan .env sudah dimasukkan CoinGecko API Key (COINGECKO_API_KEY=kunci_api).
+2. Pastikan dependencies sudah terinstal dengan `pip install -r requirements.txt`.
+3. Jalankan data ingestion: `python src/ingest_data.py`.
+4. Jalankan data preprocessing: `python src/preprocess.py`.
+5. Folder data/raw menyimpan data murni sedangkan data/processed menyimpan data yang sudah dilakukan preprocessing.
