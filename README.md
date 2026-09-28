@@ -1,6 +1,8 @@
 # MLOps-financial-fraud-detection
 Project MLOps yang akan menganalisis dan mendeteksi transaksi keuangan yang mencurigakan secara otomatis dengan proses data ingestion (CoinGecko API), data processing, training model and automated retraining, evaluation.
 
+Link GitHub: https://github.com/Aslamnh/MLOps-financial-fraud-detection/tree/main
+
 ## Struktur Direktori
 
 ```text
