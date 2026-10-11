@@ -45,19 +45,26 @@ Link GitHub: https://github.com/Aslamnh/MLOps-financial-fraud-detection/tree/mai
 5. Folder data/raw menyimpan data murni sedangkan data/processed menyimpan data yang sudah dilakukan preprocessing.
 
 ## Alur Versioning Data (DVC)
-1. Mendaftarkan direktori data ke DVC agar menghasilkan file penunjuk (.dvc)
+Data versioning dengan DVC penting untuk reproduksibilitas model. Data transaksi bersifat dinamis setiap dilakukan data ingestion, pelacakan hash data fisik dengan .dvc memungkinkan untuk kembali ke versi dataset spesifik yang ingin digunakan.
+
+Langkah-Langkah Data Versioning dengan DVC:
+1. Inisialisasi DVC
+    ```
+    dvc init
+    ```
+2. Mendaftarkan direktori data ke DVC agar menghasilkan file penunjuk (.dvc)
     ```
     dvc add data/raw/
     dvc add data/processed/
     ```
-2. Saat data baru ditarik melalui skrip ingestion dan preprocess
+3. Saat data baru ditarik melalui skrip ingestion dan preprocess
     ```
     python src/ingest_data.py
     python src/preprocess.py
     dvc add data/raw/
     dvc add data/processed/
     ```
-3. Untuk melakukan audit transisi versi data
+4. Untuk melakukan audit transisi versi data
     ```
     dvc diff
     ```
