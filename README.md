@@ -5,7 +5,7 @@ Link GitHub: https://github.com/Aslamnh/MLOps-financial-fraud-detection/tree/mai
 
 ## Struktur Direktori
 
-```text
+```
 .
 ├── config/                  # Berkas konfigurasi proyek
 ├── data/                    # Penyimpanan dataset
@@ -43,3 +43,21 @@ Link GitHub: https://github.com/Aslamnh/MLOps-financial-fraud-detection/tree/mai
 3. Jalankan data ingestion: `python src/ingest_data.py`.
 4. Jalankan data preprocessing: `python src/preprocess.py`.
 5. Folder data/raw menyimpan data murni sedangkan data/processed menyimpan data yang sudah dilakukan preprocessing.
+
+## Alur Versioning Data (DVC)
+1. Mendaftarkan direktori data ke DVC agar menghasilkan file penunjuk (.dvc)
+    ```
+    dvc add data/raw/
+    dvc add data/processed/
+    ```
+2. Saat data baru ditarik melalui skrip ingestion dan preprocess
+    ```
+    python src/ingest_data.py
+    python src/preprocess.py
+    dvc add data/raw/
+    dvc add data/processed/
+    ```
+3. Untuk melakukan audit transisi versi data
+    ```
+    dvc diff
+    ```
