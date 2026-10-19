@@ -3,3 +3,5 @@ python-dotenv
 pandas
 scikit-learn
 jupyter
+mlflow>=2.16
+numpy
