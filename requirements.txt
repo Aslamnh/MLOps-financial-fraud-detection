@@ -5,6 +5,4 @@ scikit-learn
 jupyter
 mlflow>=2.16
 numpy
-dvc[gdrive]
-pyOpenSSL>=24.0
-cryptography
+dvc[s3]
