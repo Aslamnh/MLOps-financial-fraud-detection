@@ -1,0 +1,5 @@
+[core]
+    remote = storage
+['remote "storage"']
+    url = s3://mlops-fraud-detection-b2/dvc
+    endpointurl = https://s3.us-east-005.backblazeb2.com
