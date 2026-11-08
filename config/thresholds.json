@@ -3,7 +3,7 @@
   "minimum": {
     "cv_f1_mean": 0.30,
     "f1_score": 0.30,
-    "recall": 0.40,
+    "recall": 0.90,
     "roc_auc": 0.80
   }
 }
