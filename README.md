@@ -73,43 +73,36 @@ Langkah-Langkah Data Versioning dengan DVC:
     dvc diff
     ```
 
-## Model Registry dan Inferensi
+## Otomatisasi Pipeline (CI/CD dengan GitHub Actions)
 
-Model fraud-detection-rf dikelola di MLflow Model Registry dengan src/model_registry.py.
+Setiap `push` ke `main` dan setiap `pull request` ke `main` memicu alur kerja
+`.github/workflows/mlops-automation.yaml` (prinsip *Code as a Trigger*):
 
-Model aktif untuk inferensi
-Versi aktif: v1 (alias production), berasal dari run rf-balanced-deep (200 pohon, max_depth 8, min_samples_leaf 1, class_weight balanced)
-URI inferensi: models:/fraud-detection-rf@production
-Pembanding: v2 (rf-tuned-v2: 300 pohon, max_depth 10) di Staging
-| Versi | cv_f1_mean | cv_f1_std | f1 uji | precision | recall | roc_auc |
-|---|---|---|---|---|---|---|
-| v1 | (Production) | 0,3667 | 0,3055 | 0,4000 | 0,3333 | 0,5000 | 0,9643 |
-| v2 | (Staging) | 0,3333 | 0,2789 | 0,5000 | 0,5000 | 0,5000 |	0,9643 |
+| Tahap | Job / langkah | Isi |
+|---|---|---|
+| 1 | `test` | `pytest tests` (logika pelabelan, pemuatan data, metrik, pengecekan threshold) |
+| 2 | Automated Training | `dvc pull data/processed.dvc` dari Backblaze B2, lalu `python src/train.py --no-register` |
+| 3 | Evaluasi dan validasi | `python src/evaluate_model.py` membandingkan metrik dengan `config/thresholds.json`; gagal bila ada metrik di bawah ambang |
+| 4 | Auto-registry | `python src/register_staging.py` mendaftarkan model ke MLflow Model Registry dengan alias `staging` |
 
-Alasan memilih v1: cv_f1_mean lebih tinggi dan menjadi metrik utama, perbedaan performa metrik lain sangat kecil sehingga model yang lebih sederhana dipilih karena lebih cepat dan efisien. Namun, v2 memiliki precision dan recall yang lebih tinggi.
+Tahap 2 sampai 4 hanya berjalan bila tahap sebelumnya lulus. Model yang tidak memenuhi threshold tidak pernah masuk registry.
 
-Berkas metadata
-* models/registry_metadata.yaml: referensi model, metrik, hash data, hash model, dan git commit
-* models/production.dvc: pointer DVC artefak model Production
-* docs/model_version_comparison.md: perbandingan versi
-* docs/stage_transitions.md: riwayat transisi stage
-* docs/mlflow_runs.csv: ekspor seluruh run
-* mlflow.db.dvc, mlruns.dvc: cadangan MLflow tracking (DVC)
+### Secret yang dibutuhkan
+Tambahkan di **Settings > Secrets and variables > Actions** (terpisah dari Codespaces secret):
+`AWS_ACCESS_KEY_ID` dan `AWS_SECRET_ACCESS_KEY` (kunci Backblaze B2 untuk `dvc pull`).
 
-Cara menjalankan
-```
-bash
-dvc pull                                         # ambil data dan cadangan MLflow dari B2
-python src/model_registry.py describe            # deskripsi dan tag metadata
-python src/model_registry.py new-version --run-name rf-tuned-v2 --n-estimators 300 --max-depth 10 --min-samples-leaf 1
-python src/model_registry.py compare             # bandingkan versi
-python src/model_registry.py promote --version 1 --stage Staging
-python src/model_registry.py promote --version 2 --stage Staging
-python src/model_registry.py promote --version 1 --stage Production --note "cv_f1_mean tertinggi"
-python src/model_registry.py verify              # uji load_model dan prediksi
-python src/model_registry.py publish             # ekspor model, dvc add, tulis metadata YAML
-dvc push
-mlflow ui --backend-store-uri sqlite:///mlflow.db
+### Mengubah threshold
+Ubah nilai pada `config/thresholds.json`. Perubahan ini juga memicu pipeline.
+
+### Menjalankan secara lokal
+```bash
+pip install pytest
+python -m pytest tests -v
+python src/train.py --no-register
+python src/evaluate_model.py
+python src/register_staging.py
 ```
 
-Catatan: mlflow.db dan mlruns/ dicadangkan lewat DVC; pemulihan di Codespace baru mengandalkan path repositori yang sama (/workspaces/MLOps-financial-fraud-detection). Jalankan train.py hanya sekali pada registry kosong, karena setiap eksekusi mendaftarkan versi baru.
+Catatan: registry pada CI memakai SQLite sementara di runner, sehingga setiap eksekusi membuat registry baru
+(`mlflow.db` dan laporan evaluasi disimpan sebagai artifact eksekusi). Untuk registry yang berkelanjutan
+diperlukan MLflow tracking server terpusat.
