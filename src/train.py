@@ -54,7 +54,7 @@ LABEL_RULES = {"volume_z_threshold": 2.0, "price_change_z_threshold": 2.0}
 
 # Konfigurasi eksperimen (hyperparameter tuning). Minimal 3 run.
 RUN_CONFIGS = [
-    {"run_name": "rf-baseline", "n_estimators": 50, "max_depth": 3, "min_samples_leaf": 5, "class_weight": None},
+    {"run_name": "rf-baseline", "n_estimators": 51, "max_depth": 4, "min_samples_leaf": 6, "class_weight": None},
     {"run_name": "rf-balanced-medium", "n_estimators": 100, "max_depth": 5, "min_samples_leaf": 2, "class_weight": "balanced"},
     {"run_name": "rf-balanced-deep", "n_estimators": 200, "max_depth": 8, "min_samples_leaf": 1, "class_weight": "balanced"},
     {"run_name": "rf-balanced-subsample", "n_estimators": 300, "max_depth": None, "min_samples_leaf": 2, "class_weight": "balanced_subsample"},
