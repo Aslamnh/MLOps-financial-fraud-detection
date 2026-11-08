@@ -68,3 +68,37 @@ Langkah-Langkah Data Versioning dengan DVC:
     ```
     dvc diff
     ```
+
+## Otomatisasi Pipeline (CI/CD dengan GitHub Actions)
+
+Setiap `push` ke `main` dan setiap `pull request` ke `main` memicu alur kerja
+`.github/workflows/mlops-automation.yaml` (prinsip *Code as a Trigger*):
+
+| Tahap | Job / langkah | Isi |
+|---|---|---|
+| 1 | `test` | `pytest tests` (logika pelabelan, pemuatan data, metrik, pengecekan threshold) |
+| 2 | Automated Training | `dvc pull data/processed.dvc` dari Backblaze B2, lalu `python src/train.py --no-register` |
+| 3 | Evaluasi dan validasi | `python src/evaluate_model.py` membandingkan metrik dengan `config/thresholds.json`; gagal bila ada metrik di bawah ambang |
+| 4 | Auto-registry | `python src/register_staging.py` mendaftarkan model ke MLflow Model Registry dengan alias `staging` |
+
+Tahap 2 sampai 4 hanya berjalan bila tahap sebelumnya lulus. Model yang tidak memenuhi threshold tidak pernah masuk registry.
+
+### Secret yang dibutuhkan
+Tambahkan di **Settings > Secrets and variables > Actions** (terpisah dari Codespaces secret):
+`AWS_ACCESS_KEY_ID` dan `AWS_SECRET_ACCESS_KEY` (kunci Backblaze B2 untuk `dvc pull`).
+
+### Mengubah threshold
+Ubah nilai pada `config/thresholds.json`. Perubahan ini juga memicu pipeline.
+
+### Menjalankan secara lokal
+```bash
+pip install pytest
+python -m pytest tests -v
+python src/train.py --no-register
+python src/evaluate_model.py
+python src/register_staging.py
+```
+
+Catatan: registry pada CI memakai SQLite sementara di runner, sehingga setiap eksekusi membuat registry baru
+(`mlflow.db` dan laporan evaluasi disimpan sebagai artifact eksekusi). Untuk registry yang berkelanjutan
+diperlukan MLflow tracking server terpusat.
