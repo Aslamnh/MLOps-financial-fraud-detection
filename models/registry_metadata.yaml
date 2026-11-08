@@ -1,0 +1,42 @@
+registered_model: fraud-detection-rf
+version: 1
+stage: Production
+aliases:
+- production
+inference_uri: models:/fraud-detection-rf@production
+run_id: 71ef7322fac241a2ab079547ab1f8ead
+run_name: rf-balanced-deep
+selection_metric: cv_f1_mean
+metrics:
+  accuracy: 0.9
+  precision: 0.333333
+  recall: 0.5
+  f1_score: 0.4
+  roc_auc: 0.964286
+  cv_f1_mean: 0.366667
+  cv_f1_std: 0.305505
+  n_train: 69.0
+  n_test: 30.0
+  positive_rate: 0.086957
+parameters:
+  n_estimators: '200'
+  max_depth: '8'
+  min_samples_leaf: '1'
+  class_weight: balanced
+  random_state: '42'
+  test_size: '0.3'
+  label_volume_z_threshold: '2.0'
+  label_price_change_z_threshold: '2.0'
+  features: log_price,log_volume,high_low_spread
+  cv_folds: '5'
+data_lineage:
+  dataset_path: data/processed/market_data_processed.csv
+  dataset_sha256: bbbe22932b6e1df0f72355a48d49e1d62cc8fd6eaee7193437f18de9f9f782ce
+  dvc_pointer: data/processed.dvc
+  dvc_md5: 1d6c6c4a8506eae161a655134ac5e4f4.dir
+model_artifact:
+  path: models/production
+  dvc_pointer: models/production.dvc
+  dvc_md5: 7f52a7c2273655991ebe5fcbdbfd254d.dir
+git_commit: db5e712
+published_at: 2026-11-04 02:30:49 UTC

@@ -8,7 +8,7 @@ Link GitHub: https://github.com/Aslamnh/MLOps-financial-fraud-detection/tree/mai
 ```
 .
 ├── config/                  # Berkas konfigurasi proyek
-├── data/                    # Penyimpanan dataset
+├── data/                    # Penyimpanan dataset (dilacak DVC, bukan Git)
 │   ├── raw/                 # Data mentah hasil ekstraksi API ( CoinGecko )
 │   ├── processed/           # Data yang sudah dibersihkan dan siap diproses model
 │   └── .gitkeep             # Menjaga struktur folder tetap terdeteksi Git saat kosong
@@ -18,9 +18,13 @@ Link GitHub: https://github.com/Aslamnh/MLOps-financial-fraud-detection/tree/mai
 ├── notebooks/               # Jupyter Notebooks untuk analisis eksploratif & eksperimen
 ├── src/                     # Source code utama proyek
 │   ├── hello.py             # Skrip testing / contoh skrip Python
-│   └── ingest.py            # Skrip ekstraksi & penarikan data dari CoinGecko API
+│   ├── ingest_data.py       # Skrip ekstraksi & penarikan data dari CoinGecko API
+│   ├── preprocess.py        # Skrip pembersihan dan pelabelan data
+│   ├── train.py             # Pelatihan model + pelacakan eksperimen MLflow (LK-06)
+│   └── model_registry.py    # Pengelolaan Model Registry dan inferensi (LK-07)
 ├── tests/                   # Folder untuk skrip pengujian otomatis (unit testing)
-├── .env                     # Variabel lingkungan lokal (berisi API Key asli, di-ignore Git)
+├── .dvc/                    # Konfigurasi DVC (remote Backblaze B2, tanpa kredensial)
+├── .env                     # (Opsional, hanya lokal) variabel lingkungan, di-ignore Git
 ├── .gitignore               # Menentukan berkas/folder yang tidak di-push ke GitHub
 ├── LICENSE                  # Lisensi hak cipta penggunaan proyek
 ├── README.md                # Dokumentasi utama proyek
