@@ -106,3 +106,73 @@ python src/register_staging.py
 Catatan: registry pada CI memakai SQLite sementara di runner, sehingga setiap eksekusi membuat registry baru
 (`mlflow.db` dan laporan evaluasi disimpan sebagai artifact eksekusi). Untuk registry yang berkelanjutan
 diperlukan MLflow tracking server terpusat.
+
+## Menjalankan Seluruh Sistem dengan Docker Compose
+
+Dua layanan berjalan bersama dalam satu jaringan Docker (`fraud-detection-net`):
+
+| Layanan | Peran | Port host |
+|---|---|---|
+| `mlflow-server` | Tracking server dan Model Registry MLflow (backend SQLite di volume persisten) | 5000 |
+| `api-service` | API inferensi FastAPI; menarik model `models:/fraud-detection-rf@production` dari `mlflow-server` | 8000 |
+
+Satu layanan tambahan, `mlflow-init`, hanya berjalan sekali untuk menyalin registry hasil `dvc pull` ke volume
+`mlflow-data`. `api-service` baru dimulai setelah `mlflow-server` sehat (`depends_on` dengan `service_healthy`).
+
+### Prasyarat
+- Docker Desktop (atau Docker Engine) dengan Docker Compose v2.
+- Registry dan model sudah diambil dari remote DVC. Ini membutuhkan kredensial Backblaze B2
+  (`AWS_ACCESS_KEY_ID` dan `AWS_SECRET_ACCESS_KEY`):
+  ```bash
+  pip install -r requirements.txt
+  dvc pull
+  ```
+  Setelah itu `mlflow.db`, `mlruns/`, dan `models/production/` ada di folder proyek.
+
+### Satu perintah untuk menjalankan semuanya
+```bash
+docker compose up -d --build
+```
+
+### Memeriksa status
+```bash
+docker compose ps
+```
+Kedua layanan harus berstatus `running (healthy)`.
+
+- MLflow UI: http://localhost:5000
+- Dokumentasi API: http://localhost:8000/docs
+- Pemeriksaan kesehatan: http://localhost:8000/health
+- Informasi model: http://localhost:8000/model-info (`model_source` bernilai `tracking-server`)
+
+### Mencoba prediksi
+PowerShell:
+```powershell
+$body = @{ transactions = @(@{ current_price = 95000; total_volume = 3.2e10; high_24h = 97000; low_24h = 93500 }) } | ConvertTo-Json -Depth 4
+Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -ContentType "application/json" -Body $body | ConvertTo-Json -Depth 5
+```
+Bash:
+```bash
+curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
+  -d '{"transactions":[{"current_price":95000,"total_volume":3.2e10,"high_24h":97000,"low_24h":93500}]}'
+```
+
+### Menghentikan dan mengatur ulang
+```bash
+docker compose down        # hentikan kontainer; registry di volume tetap ada
+docker compose up -d       # jalankan lagi; data masih sama
+docker compose down -v     # hentikan dan HAPUS volume (registry disalin ulang dari folder proyek)
+```
+
+### Pemecahan masalah
+- **`mlflow-init` gagal dengan pesan `dvc pull`:** `mlflow.db` atau `mlruns/` belum ada. Jalankan `dvc pull`.
+- **`api-service` memakai `model_source: local-fallback`:** tracking server tidak dapat mengakses artefak model.
+  MLflow menyimpan path artefak secara absolut di `mlflow.db`; periksa path yang tersimpan:
+  ```bash
+  python -c "import sqlite3; c=sqlite3.connect('mlflow.db'); print(c.execute('select name, artifact_location from experiments').fetchall())"
+  ```
+  Jika path-nya bukan `/workspaces/MLOps-financial-fraud-detection/...`, jalankan dengan
+  `REGISTRY_ROOT=<path-yang-tersimpan> docker compose up -d --build`, lalu `docker compose down -v` bila
+  volume sudah terisi dengan path yang berbeda.
+- **Mengganti model aktif:** pindahkan alias `production` di MLflow UI, lalu `curl -X POST http://localhost:8000/reload`.
+

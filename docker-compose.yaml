@@ -1,0 +1,128 @@
+name: fraud-detection
+
+# Sistem terorkestrasi: tracking/registry MLflow + API inferensi.
+# Jalankan seluruhnya dengan satu perintah:  docker compose up -d --build
+#
+# Prasyarat: `dvc pull` sudah dijalankan agar mlflow.db, mlruns/, dan
+# models/production/ ada di folder proyek (lihat README).
+#
+# REGISTRY_ROOT adalah path tempat registry dibuat dulu. MLflow menyimpan path
+# artefak model secara absolut di mlflow.db, sehingga volume di-mount pada path
+# yang sama agar model lama tetap ditemukan.
+
+x-registry-root: &registry_root ${REGISTRY_ROOT:-/workspaces/MLOps-financial-fraud-detection}
+
+services:
+  # Tugas sekali jalan: menyalin registry hasil `dvc pull` ke volume persisten.
+  mlflow-init:
+    image: alpine:3.20
+    container_name: mlflow-init
+    restart: "no"
+    volumes:
+      - .:/seed:ro
+      - mlflow-data:/target
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        if [ ! -f /seed/mlflow.db ] || [ ! -d /seed/mlruns ]; then
+          echo "[init] mlflow.db atau mlruns/ tidak ditemukan. Jalankan 'dvc pull' dulu." >&2
+          exit 1
+        fi
+        if [ -f /target/mlflow.db ]; then
+          echo "[init] volume sudah berisi registry; penyalinan dilewati."
+        else
+          cp /seed/mlflow.db /target/mlflow.db
+          cp -r /seed/mlruns /target/mlruns
+          chmod -R a+rX /target
+          echo "[init] registry disalin ke volume mlflow-data."
+        fi
+    networks:
+      - mlops-net
+
+  mlflow-server:
+    build:
+      context: .
+      dockerfile: docker/mlflow/Dockerfile
+    image: fraud-detection/mlflow-server:1.0
+    container_name: mlflow-server
+    restart: unless-stopped
+    working_dir: *registry_root
+    depends_on:
+      mlflow-init:
+        condition: service_completed_successfully
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --backend-store-uri=sqlite:///${REGISTRY_ROOT:-/workspaces/MLOps-financial-fraud-detection}/mlflow.db
+      - --allowed-hosts=mlflow-server:5000,localhost:5000,127.0.0.1:5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:${REGISTRY_ROOT:-/workspaces/MLOps-financial-fraud-detection}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2g
+        reservations:
+          memory: 256m
+    networks:
+      - mlops-net
+
+  api-service:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    image: fraud-detection/api-service:1.0
+    container_name: api-service
+    restart: unless-stopped
+    depends_on:
+      mlflow-server:
+        condition: service_healthy
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow-server:5000
+      MODEL_NAME: fraud-detection-rf
+      MODEL_ALIAS: production
+      LOCAL_MODEL_PATH: /app/models/production
+      DECISION_THRESHOLD: "0.5"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Artefak model yang ditunjuk registry (hanya baca).
+      - mlflow-data:${REGISTRY_ROOT:-/workspaces/MLOps-financial-fraud-detection}:ro
+      # Cadangan: model Production yang diekspor DVC, dipakai bila tracking server gagal.
+      - ./models/production:/app/models/production:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+        reservations:
+          memory: 256m
+    networks:
+      - mlops-net
+
+networks:
+  mlops-net:
+    name: fraud-detection-net
+    driver: bridge
+
+volumes:
+  mlflow-data:
+    name: fraud-detection-mlflow-data
