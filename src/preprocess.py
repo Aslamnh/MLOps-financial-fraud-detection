@@ -74,6 +74,13 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_feat
 
+def load_all_raw(raw_dir: str) -> pd.DataFrame:
+    """Gabungkan seluruh snapshot mentah di data/raw/."""
+    files = sorted(glob.glob(os.path.join(raw_dir, "raw_market_data_*.csv")))
+    if not files:
+        raise FileNotFoundError(f"Tidak ada file data mentah di {raw_dir}")
+    print(f"Membaca {len(files)} file mentah")
+    return pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
 
 def run_preprocessing() -> None:
     """
@@ -84,10 +91,7 @@ def run_preprocessing() -> None:
     os.makedirs(processed_dir, exist_ok=True)
 
     print("--- MEMULAI PRAPEMROSESAN DATA ---")
-    latest_file = get_latest_raw_file(raw_dir)
-    print(f"Reading file : {latest_file}")
-
-    df_raw = pd.read_csv(latest_file)
+    df_raw = load_all_raw(raw_dir)
 
     # Eksekusi pipeline pembersihan dan rekayasa fitur
     df_cleaned = clean_data(df_raw)

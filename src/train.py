@@ -42,7 +42,7 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test
 
 DEFAULT_DATA_PATH = os.path.join("data", "processed", "market_data_processed.csv")
 DEFAULT_TRACKING_URI = "sqlite:///mlflow.db"
-EXPERIMENT_NAME = "financial-fraud-detection"
+EXPERIMENT_NAME = "financial-fraud-detection-v2"
 REGISTERED_MODEL_NAME = "fraud-detection-rf"
 METADATA_PATH = os.path.join("models", "best_model_metadata.json")
 SELECTION_METRIC = "cv_f1_mean"
