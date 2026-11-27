@@ -1,42 +1,43 @@
 registered_model: fraud-detection-rf
-version: 1
+version: 4
 stage: Production
 aliases:
 - production
 inference_uri: models:/fraud-detection-rf@production
-run_id: 71ef7322fac241a2ab079547ab1f8ead
-run_name: rf-balanced-deep
+run_id: dd28c8607d544dcd8d53d870ceffe240
+run_name: rf-balanced-medium
 selection_metric: cv_f1_mean
 metrics:
-  accuracy: 0.9
-  precision: 0.333333
-  recall: 0.5
-  f1_score: 0.4
-  roc_auc: 0.964286
-  cv_f1_mean: 0.366667
-  cv_f1_std: 0.305505
-  n_train: 69.0
-  n_test: 30.0
-  positive_rate: 0.086957
+  accuracy: 0.935123
+  precision: 0.569231
+  recall: 0.973684
+  f1_score: 0.718447
+  roc_auc: 0.979153
+  cv_f1_mean: 0.765268
+  cv_f1_std: 0.03754
+  n_train: 1041.0
+  n_test: 447.0
+  positive_rate: 0.086455
 parameters:
-  n_estimators: '200'
-  max_depth: '8'
-  min_samples_leaf: '1'
+  n_estimators: '100'
+  max_depth: '5'
+  min_samples_leaf: '2'
   class_weight: balanced
+  model_type: RandomForestClassifier
   random_state: '42'
   test_size: '0.3'
   label_volume_z_threshold: '2.0'
   label_price_change_z_threshold: '2.0'
-  features: log_price,log_volume,high_low_spread
+  features: log_price,log_volume,high_low_spread,log_spread,vol_per_price,vol_spread,price_position_in_range
   cv_folds: '5'
 data_lineage:
-  dataset_path: data/processed/market_data_processed.csv
-  dataset_sha256: bbbe22932b6e1df0f72355a48d49e1d62cc8fd6eaee7193437f18de9f9f782ce
-  dvc_pointer: data/processed.dvc
-  dvc_md5: 1d6c6c4a8506eae161a655134ac5e4f4.dir
+  dataset_path: data\processed\market_data_processed.csv
+  dataset_sha256: 3f28a1d1a77025c9a9dab56ea222d729bc569fa148f10f81fb2b61b47f45e1e2
+  dvc_pointer: data\processed.dvc
+  dvc_md5: 3e8bceb9c5213e7c9bf5729c74fd31af.dir
 model_artifact:
-  path: models/production
-  dvc_pointer: models/production.dvc
-  dvc_md5: 7f52a7c2273655991ebe5fcbdbfd254d.dir
-git_commit: db5e712
-published_at: 2026-11-04 02:30:49 UTC
+  path: models\production
+  dvc_pointer: models\production.dvc
+  dvc_md5: d0c70673db2aabd101be476dbdd9ca8f.dir
+git_commit: bfbe765
+published_at: 2026-11-27 15:45:15 UTC
