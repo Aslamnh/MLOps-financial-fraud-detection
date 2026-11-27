@@ -1,39 +1,39 @@
 {
   "registered_model_name": "fraud-detection-rf",
-  "model_version": 3,
-  "run_id": "b07e973376174fb19c044237d2e15adf",
+  "model_version": 4,
+  "run_id": "dd28c8607d544dcd8d53d870ceffe240",
   "run_name": "rf-balanced-medium",
   "selection_metric": "cv_f1_mean",
   "best_parameters": {
-    "max_depth": "5",
-    "label_price_change_z_threshold": "2.0",
-    "test_size": "0.3",
-    "min_samples_leaf": "2",
-    "cv_folds": "5",
-    "class_weight": "balanced",
     "model_type": "RandomForestClassifier",
+    "random_state": "42",
     "n_estimators": "100",
-    "label_volume_z_threshold": "2.0",
+    "test_size": "0.3",
+    "cv_folds": "5",
+    "min_samples_leaf": "2",
+    "label_price_change_z_threshold": "2.0",
     "features": "log_price,log_volume,high_low_spread,log_spread,vol_per_price,vol_spread,price_position_in_range",
-    "random_state": "42"
+    "label_volume_z_threshold": "2.0",
+    "max_depth": "5",
+    "class_weight": "balanced"
   },
   "metrics": {
-    "f1_score": 0.7184466019417476,
     "n_test": 447.0,
-    "recall": 0.9736842105263158,
-    "accuracy": 0.9351230425055929,
-    "roc_auc": 0.9791532621284262,
-    "cv_f1_std": 0.03754004344547036,
+    "f1_score": 0.7184466019417476,
     "n_train": 1041.0,
-    "cv_f1_mean": 0.7652675814066576,
+    "recall": 0.9736842105263158,
     "positive_rate": 0.08645533141210375,
-    "precision": 0.5692307692307692
+    "cv_f1_mean": 0.7652675814066576,
+    "cv_f1_std": 0.03754004344547036,
+    "precision": 0.5692307692307692,
+    "accuracy": 0.9351230425055929,
+    "roc_auc": 0.9791532621284262
   },
   "dataset": {
     "path": "data\\processed\\market_data_processed.csv",
     "sha256": "3f28a1d1a77025c9a9dab56ea222d729bc569fa148f10f81fb2b61b47f45e1e2",
     "rows": 1488
   },
-  "git_commit": "704a34a",
-  "model_uri": "runs:/b07e973376174fb19c044237d2e15adf/model"
+  "git_commit": "727c541",
+  "model_uri": "runs:/dd28c8607d544dcd8d53d870ceffe240/model"
 }
