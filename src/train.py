@@ -30,7 +30,11 @@ import mlflow.sklearn
 import numpy as np
 import pandas as pd
 from mlflow.models import infer_signature
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    HistGradientBoostingClassifier,
+    RandomForestClassifier,
+)
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -38,26 +42,42 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.model_selection import (
+    StratifiedKFold,
+    TunedThresholdClassifierCV,
+    cross_val_score,
+    train_test_split,
+)
 
 DEFAULT_DATA_PATH = os.path.join("data", "processed", "market_data_processed.csv")
 DEFAULT_TRACKING_URI = "sqlite:///mlflow.db"
-EXPERIMENT_NAME = "financial-fraud-detection"
+EXPERIMENT_NAME = "financial-fraud-detection-v2"
 REGISTERED_MODEL_NAME = "fraud-detection-rf"
 METADATA_PATH = os.path.join("models", "best_model_metadata.json")
 SELECTION_METRIC = "cv_f1_mean"
 
-FEATURE_COLUMNS = ["log_price", "log_volume", "high_low_spread"]
+FEATURE_COLUMNS = [
+    "log_price",
+    "log_volume",
+    "high_low_spread",
+    "log_spread",
+    "vol_per_price",
+    "vol_spread",
+    "price_position_in_range",
+]
 
 # Ambang aturan pelabelan anomali (dicatat sebagai parameter di setiap run).
 LABEL_RULES = {"volume_z_threshold": 2.0, "price_change_z_threshold": 2.0}
 
-# Konfigurasi eksperimen (hyperparameter tuning). Minimal 3 run.
+# Konfigurasi eksperimen (hyperparameter & model tuning). Minimal 3 run.
 RUN_CONFIGS = [
-    {"run_name": "rf-baseline", "n_estimators": 50, "max_depth": 3, "min_samples_leaf": 5, "class_weight": None},
-    {"run_name": "rf-balanced-medium", "n_estimators": 100, "max_depth": 5, "min_samples_leaf": 2, "class_weight": "balanced"},
-    {"run_name": "rf-balanced-deep", "n_estimators": 200, "max_depth": 8, "min_samples_leaf": 1, "class_weight": "balanced"},
-    {"run_name": "rf-balanced-subsample", "n_estimators": 300, "max_depth": None, "min_samples_leaf": 2, "class_weight": "balanced_subsample"},
+    {"run_name": "rf-baseline", "model_type": "RandomForestClassifier", "n_estimators": 50, "max_depth": 3, "min_samples_leaf": 5, "class_weight": None},
+    {"run_name": "rf-balanced-medium", "model_type": "RandomForestClassifier", "n_estimators": 100, "max_depth": 5, "min_samples_leaf": 2, "class_weight": "balanced"},
+    {"run_name": "rf-balanced-deep", "model_type": "RandomForestClassifier", "n_estimators": 200, "max_depth": 8, "min_samples_leaf": 1, "class_weight": "balanced"},
+    {"run_name": "rf-balanced-subsample", "model_type": "RandomForestClassifier", "n_estimators": 300, "max_depth": None, "min_samples_leaf": 2, "class_weight": "balanced_subsample"},
+    {"run_name": "et-balanced-subsample", "model_type": "ExtraTreesClassifier", "n_estimators": 300, "max_depth": None, "min_samples_leaf": 2, "class_weight": "balanced_subsample"},
+    {"run_name": "hgb-balanced", "model_type": "HistGradientBoostingClassifier", "max_iter": 200, "max_depth": 6, "learning_rate": 0.05, "class_weight": "balanced"},
+    {"run_name": "rf-tuned-threshold", "model_type": "TunedRandomForest", "n_estimators": 300, "max_depth": None, "min_samples_leaf": 2, "class_weight": "balanced_subsample"},
 ]
 
 
@@ -123,11 +143,24 @@ def build_features_and_labels(df: pd.DataFrame):
         | (price_change_z.abs() > LABEL_RULES["price_change_z_threshold"])
     ).astype(int)
 
+    log_price = np.log1p(df["current_price"])
+    log_volume = np.log1p(df["total_volume"])
+    spread = df["high_low_spread"]
+    if "high_24h" in df.columns and "low_24h" in df.columns:
+        price_range = (df["high_24h"] - df["low_24h"]).replace(0, np.nan)
+        price_pos = ((df["current_price"] - df["low_24h"]) / price_range).fillna(0.5).clip(0.0, 1.0)
+    else:
+        price_pos = 0.5
+
     features = pd.DataFrame(
         {
-            "log_price": np.log1p(df["current_price"]),
-            "log_volume": np.log1p(df["total_volume"]),
-            "high_low_spread": df["high_low_spread"],
+            "log_price": log_price,
+            "log_volume": log_volume,
+            "high_low_spread": spread,
+            "log_spread": np.log1p(spread.clip(lower=0)),
+            "vol_per_price": log_volume - log_price,
+            "vol_spread": log_volume * spread,
+            "price_position_in_range": price_pos,
         }
     )[FEATURE_COLUMNS]
     return features, label
@@ -146,14 +179,29 @@ def evaluate(model, x_test, y_test) -> dict:
     return metrics
 
 
+def build_model(model_type: str, hyperparams: dict, seed: int, cv_folds: int):
+    """Bangun estimator berdasarkan model_type dan hyperparameter konfigurasi."""
+    if model_type == "RandomForestClassifier":
+        return RandomForestClassifier(**hyperparams, random_state=seed, n_jobs=-1)
+    if model_type == "ExtraTreesClassifier":
+        return ExtraTreesClassifier(**hyperparams, random_state=seed, n_jobs=-1)
+    if model_type == "HistGradientBoostingClassifier":
+        return HistGradientBoostingClassifier(**hyperparams, random_state=seed)
+    if model_type == "TunedRandomForest":
+        base = RandomForestClassifier(**hyperparams, random_state=seed, n_jobs=-1)
+        return TunedThresholdClassifierCV(base, scoring="f1", cv=cv_folds, random_state=seed)
+    raise ValueError(f"model_type tidak dikenal: {model_type}")
+
+
 def train_one_run(config, x_train, x_test, y_train, y_test, args, dataset_info) -> dict:
-    hyperparams = {k: v for k, v in config.items() if k != "run_name"}
+    model_type = config.get("model_type", "RandomForestClassifier")
+    hyperparams = {k: v for k, v in config.items() if k not in {"run_name", "model_type"}}
     n_splits = int(min(5, y_train.value_counts().min()))
     cv = StratifiedKFold(n_splits=max(n_splits, 2), shuffle=True, random_state=args.seed)
 
     with mlflow.start_run(run_name=config["run_name"]) as run:
         # --- Parameter ---
-        mlflow.log_params({**hyperparams, "random_state": args.seed, "test_size": args.test_size})
+        mlflow.log_params({**hyperparams, "model_type": model_type, "random_state": args.seed, "test_size": args.test_size})
         mlflow.log_params({f"label_{k}": v for k, v in LABEL_RULES.items()})
         mlflow.log_param("features", ",".join(FEATURE_COLUMNS))
         mlflow.log_param("cv_folds", cv.get_n_splits())
@@ -168,7 +216,7 @@ def train_one_run(config, x_train, x_test, y_train, y_test, args, dataset_info) 
             }
         )
 
-        model = RandomForestClassifier(**hyperparams, random_state=args.seed, n_jobs=-1)
+        model = build_model(model_type, hyperparams, args.seed, cv.get_n_splits())
         cv_scores = cross_val_score(model, x_train, y_train, cv=cv, scoring="f1")
         model.fit(x_train, y_train)
 
@@ -182,8 +230,10 @@ def train_one_run(config, x_train, x_test, y_train, y_test, args, dataset_info) 
         )
 
         # --- Artefak tambahan + model ---
-        importances = dict(zip(FEATURE_COLUMNS, map(float, model.feature_importances_)))
-        mlflow.log_dict(importances, "feature_importances.json")
+        fitted = getattr(model, "estimator_", model)
+        if hasattr(fitted, "feature_importances_"):
+            importances = dict(zip(FEATURE_COLUMNS, map(float, fitted.feature_importances_)))
+            mlflow.log_dict(importances, "feature_importances.json")
 
         signature = infer_signature(x_train, model.predict(x_train))
         mlflow.sklearn.log_model(

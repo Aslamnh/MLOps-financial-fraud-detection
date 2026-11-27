@@ -1,38 +1,39 @@
 {
   "registered_model_name": "fraud-detection-rf",
-  "model_version": 1,
-  "run_id": "71ef7322fac241a2ab079547ab1f8ead",
-  "run_name": "rf-balanced-deep",
+  "model_version": 4,
+  "run_id": "dd28c8607d544dcd8d53d870ceffe240",
+  "run_name": "rf-balanced-medium",
   "selection_metric": "cv_f1_mean",
   "best_parameters": {
-    "n_estimators": "200",
-    "test_size": "0.3",
-    "features": "log_price,log_volume,high_low_spread",
-    "label_volume_z_threshold": "2.0",
-    "label_price_change_z_threshold": "2.0",
-    "class_weight": "balanced",
-    "max_depth": "8",
+    "model_type": "RandomForestClassifier",
     "random_state": "42",
-    "min_samples_leaf": "1",
-    "cv_folds": "5"
+    "n_estimators": "100",
+    "test_size": "0.3",
+    "cv_folds": "5",
+    "min_samples_leaf": "2",
+    "label_price_change_z_threshold": "2.0",
+    "features": "log_price,log_volume,high_low_spread,log_spread,vol_per_price,vol_spread,price_position_in_range",
+    "label_volume_z_threshold": "2.0",
+    "max_depth": "5",
+    "class_weight": "balanced"
   },
   "metrics": {
-    "f1_score": 0.4,
-    "roc_auc": 0.9642857142857143,
-    "cv_f1_std": 0.3055050463303893,
-    "precision": 0.3333333333333333,
-    "accuracy": 0.9,
-    "recall": 0.5,
-    "positive_rate": 0.08695652173913043,
-    "cv_f1_mean": 0.3666666666666666,
-    "n_test": 30.0,
-    "n_train": 69.0
+    "n_test": 447.0,
+    "f1_score": 0.7184466019417476,
+    "n_train": 1041.0,
+    "recall": 0.9736842105263158,
+    "positive_rate": 0.08645533141210375,
+    "cv_f1_mean": 0.7652675814066576,
+    "cv_f1_std": 0.03754004344547036,
+    "precision": 0.5692307692307692,
+    "accuracy": 0.9351230425055929,
+    "roc_auc": 0.9791532621284262
   },
   "dataset": {
-    "path": "data/processed/market_data_processed.csv",
-    "sha256": "bbbe22932b6e1df0f72355a48d49e1d62cc8fd6eaee7193437f18de9f9f782ce",
-    "rows": 99
+    "path": "data\\processed\\market_data_processed.csv",
+    "sha256": "3f28a1d1a77025c9a9dab56ea222d729bc569fa148f10f81fb2b61b47f45e1e2",
+    "rows": 1488
   },
-  "git_commit": "8ba3055",
-  "model_uri": "runs:/71ef7322fac241a2ab079547ab1f8ead/model"
+  "git_commit": "727c541",
+  "model_uri": "runs:/dd28c8607d544dcd8d53d870ceffe240/model"
 }
